@@ -316,7 +316,7 @@ async function verifyPayment(){
   }catch(e){toast(e.message||'Could not verify payment')}
 }
 
-async function go(n){current=n;if(n===5){await checkAdmin();await loadWatchHistory()}let html=n===1?home():n===2?search():n===3?moviesPage():n===4?downloadsPage():me();document.getElementById('app').innerHTML=html;nav();window.scrollTo(0,0)}
+async function go(n){current=n;if(n===5){checkAdmin();loadWatchHistory()}let html=n===1?home():n===2?search():n===3?moviesPage():n===4?downloadsPage():me();document.getElementById('app').innerHTML=html;nav();window.scrollTo(0,0)}
 function toggleList(id){if(watchlist.includes(id))watchlist=watchlist.filter(x=>x!==id);else watchlist.push(id);localStorage.setItem('nollyWatch',JSON.stringify(watchlist));toast(watchlist.includes(id)?'Added to My List':'Removed from My List')}
 
 function toast(t){let e=document.createElement('div');e.className='toast';e.textContent=t;document.body.appendChild(e);setTimeout(()=>e.remove(),1800)}
