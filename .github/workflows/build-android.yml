@@ -1,0 +1,40 @@
+name: Build NollyBox Android APK
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build-android:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Install Bubblewrap
+        run: npm install -g @bubblewrap/cli@1.25.0
+      - name: Initialize Android project
+        run: |
+          mkdir -p android
+          pw=$(openssl rand -hex 16)
+          printf '%s\n' 'abidoye1999.github.io' '/' 'NollyBox' 'NollyBox' 'NG' "$pw" "$pw" '#ff3038' '#070b10' 'https://placehold.co/512x512/ff3038/ffffff/png?text=N' '' '' '' '' '' '' '' '' | bubblewrap init --manifest=https://abidoye1999.github.io/NollyBox/manifest.json --directory=android
+      - name: Build debug APK
+        working-directory: android
+        run: ./gradlew assembleDebug
+      - name: Upload test APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: NollyBox-Android-Test
+          path: android/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
