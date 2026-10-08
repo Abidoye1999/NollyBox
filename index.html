@@ -256,31 +256,7 @@ async function addMovie(){if(!admin)return;const body=movieBody();if(!body)retur
 async function updateMovie(id){if(!admin)return;const body=movieBody();if(!body)return;try{const existing=await sb('/rest/v1/movies?select=id&slug=eq.'+encodeURIComponent(body.slug)+'&id=neq.'+encodeURIComponent(id));if(existing.length){toast('That slug belongs to another movie. Choose a different slug.');return}await sb('/rest/v1/movies?id=eq.'+encodeURIComponent(id),{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify(body)});toast('Movie updated successfully');await loadRemoteMovies();await adminStudio()}catch(e){toast('Could not update movie: '+e.message)}}
 async function deleteMovie(id,title){if(!admin)return;if(!confirm('Delete "'+title+'" from the catalogue?'))return;try{await sb('/rest/v1/movies?id=eq.'+encodeURIComponent(id),{method:'DELETE'});toast('Movie deleted');await loadRemoteMovies();await adminStudio()}catch(e){toast('Could not delete movie: '+e.message)}}
 
-function premium(){
-  const isPro=!!session?.profile?.is_premium;
-  document.getElementById('app').innerHTML=`<div class="page">
-    <button class="back" onclick="go(5)">‹</button>
-    <div class="premium">
-      <div class="premiumBadge">${isPro?'ACTIVE PREMIUM':'NOLLYBOX PREMIUM'}</div>
-      <h1 style="margin:10px 0 6px">Watch more. Watch better.</h1>
-      <p class="muted">Premium removes ads and unlocks more offline viewing and premium movies.</p>
-      <div class="feature">✓ No advertisements</div>
-      <div class="feature">✓ HD / Full HD where available</div>
-      <div class="feature">✓ More protected offline downloads</div>
-      <div class="feature">✓ Premium catalogue</div>
-      <div class="feature">✓ Priority access to selected new releases</div>
-      <h2 style="margin:20px 0 10px">Choose your plan</h2>
-      <div class="actions" style="align-items:stretch">
-        <button id="plan_monthly" class="planCard" type="button" onclick="selectPlan('monthly',1500)"><div class="muted">Monthly</div><div class="planPrice">₦1,500</div><div class="sub">per month</div></button>
-        <button id="plan_quarterly" class="planCard" type="button" onclick="selectPlan('quarterly',4000)"><div class="muted">3 Months</div><div class="planPrice">₦4,000</div><div class="sub">₦500 savings • 11% off</div><div class="planSave">Best value</div></button>
-      </div>
-      <div id="planChoice" class="listItem" style="margin-top:12px"><div><b>Select a plan</b><div class="sub">Secure Paystack checkout.</div></div></div>
-      <button class="primary" style="width:100%;margin-top:12px" type="button" onclick="startCheckout()">${isPro?'Manage Premium':'Continue to Payment'}</button><div id="checkoutStatus"></div>
-      <p class="sub" style="margin-top:12px">Payments are securely processed by Paystack. Choose a payment method at checkout, then return here and verify your payment.</p>
-    </div>
-    ${!isPro?`<div class="adbox" style="margin-left:0;margin-right:0;margin-top:14px">FREE PLAN • Ads will appear during eligible free viewing.</div>`:''}
-  </div>`;
-}
+function premium(){const isPro=!!session?.profile?.is_premium;const until=session?.profile?.premium_until?new Date(session.profile.premium_until):null;const expiry=until&&!isNaN(until)?until.toLocaleDateString(undefined,{day:'numeric',month:'long',year:'numeric'}):'';document.getElementById('app').innerHTML=`<div class="page"><button class="back" onclick="go(5)">‹</button><div class="premium"><div class="premiumBadge">${isPro?'ACTIVE PREMIUM':'NOLLYBOX PREMIUM'}</div><h1 style="margin:10px 0 6px">${isPro?'Your Premium is active':'Watch more. Watch better.'}</h1><p class="muted">${isPro?'Enjoy your Premium benefits until '+esc(expiry||'your plan end date')+'.':'Upgrade to remove ads and unlock premium movies and protected offline viewing.'}</p><div class="feature">✓ No advertisements</div><div class="feature">✓ HD / Full HD where available</div><div class="feature">✓ More protected offline downloads</div><div class="feature">✓ Premium catalogue</div><div class="feature">✓ Priority access to selected new releases</div>${isPro?`<div class="listItem" style="margin-top:16px"><div><b>Subscription status</b><div class="sub">Premium active${expiry?' • Expires '+esc(expiry):''}</div></div><span class="premiumBadge">ACTIVE</span></div>`: `<h2 style="margin:20px 0 10px">Choose your plan</h2><div class="actions" style="align-items:stretch"><button id="plan_monthly" class="planCard" type="button" onclick="selectPlan('monthly',1500)"><div class="muted">Monthly</div><div class="planPrice">₦1,500</div><div class="sub">per month</div></button><button id="plan_quarterly" class="planCard" type="button" onclick="selectPlan('quarterly',4000)"><div class="muted">3 Months</div><div class="planPrice">₦4,000</div><div class="sub">₦500 savings • 11% off</div><div class="planSave">Best value</div></button></div><div id="planChoice" class="listItem" style="margin-top:12px"><div><b>Select a plan</b><div class="sub">Secure Paystack checkout.</div></div></div><button class="primary" style="width:100%;margin-top:12px" type="button" onclick="startCheckout()">Continue to Payment</button><div id="checkoutStatus"></div>`}<p class="sub" style="margin-top:12px">Payments are securely processed by Paystack. NollyBox does not store your card details.</p></div>${!isPro?'<div class="adbox" style="margin-left:0;margin-right:0;margin-top:14px">FREE PLAN • Ads will appear during eligible free viewing.</div>':''}</div>`;}
 let selectedPlan=null;
 function selectPlan(code,price){selectedPlan={code,price};document.getElementById('plan_monthly')?.classList.toggle('selected',code==='monthly');document.getElementById('plan_quarterly')?.classList.toggle('selected',code==='quarterly');const el=document.getElementById('planChoice');if(el)el.innerHTML=`<div><b>${code==='monthly'?'Monthly':'3 Months'} selected</b><div class="sub">₦${price.toLocaleString()} • Ready for checkout</div></div><span class="premiumBadge">SELECTED</span>`}
 async function startCheckout(){
