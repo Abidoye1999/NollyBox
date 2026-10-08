@@ -131,7 +131,53 @@ async function uploadAvatar(){if(!session?.user?.id){toast('Please sign in first
 function profile(){if(!session?.user?.id){auth();return}let u=session.user;let html=`<div class="page"><button class="back" onclick="go(5)">‹</button><h1>Profile</h1><div style="text-align:center;padding:18px 0"><button class="avatarBtn" style="border:0" onclick="document.getElementById('avatarFile').click()">${avatarHtml(96)}</button><h2 style="margin:10px 0 3px">${esc(session?.profile?.display_name||u?.email||'NollyBox User')}</h2><div class="muted">${esc(u?.email||'')}</div><input id="avatarFile" type="file" accept="image/*" hidden onchange="document.getElementById('avatarName').textContent=this.files[0]?.name||''"><div style="margin-top:15px"><button class="primary" type="button" onclick="document.getElementById('avatarFile').click()">📷 Choose Picture</button><div id="avatarName" class="sub" style="margin-top:7px"></div><button class="secondary" type="button" style="margin-top:8px" onclick="uploadAvatar()">Upload Picture</button></div></div></div>`;document.getElementById('app').innerHTML=html;window.scrollTo(0,0)}
 function me(){let saved=watchlist.map(id=>get(id)).filter(Boolean);let cw=Object.entries(progress).filter(([id,p])=>p&&!p.completed&&p.seconds>0).sort((a,b)=>(b[1].updatedAt||0)-(a[1].updatedAt||0)).map(([id])=>get(id)).filter(Boolean);return `<div class="page"><h1>Me</h1><div class="list"><div class="listItem" onclick="${session?'profile()':'auth()'}"><div>${avatarHtml(60)}</div><div style="flex:1"><b>${session?.profile?.display_name||session?.user?.email||'Guest User'}</b><div class="sub">${session?'Signed in':'Free plan'}</div></div>${session?'<button class="secondary" onclick="logout()">Log out</button>':'<button class="primary" onclick="auth()">Sign in</button>'}</div><div class="section" style="padding:0;margin:8px 0 4px"><div class="sectionHead"><h2>My List</h2><span class="muted" style="font-size:12px">${saved.length} saved</span></div>${saved.length?`<div class="row">${saved.map(poster).join('')}</div>`:'<div class="listItem"><div style="padding:18px 8px"><b>Your list is empty</b><div class="sub">Tap ＋ My List on any movie to save it here.</div></div></div>'}</div>${cw.length?`<div class="section" style="padding:0;margin:8px 0"><div class="sectionHead"><h2>Continue Watching</h2><span class="muted" style="font-size:12px">${cw.length}</span></div><div class="row">${cw.map(continueCard).join('')}</div></div>`:''}${admin?"<div class=\"listItem\" onclick=\"adminStudio()\"><span style=\"font-size:20px\">⚙</span><b>Admin Studio</b><span class=\"muted\" style=\"margin-left:auto;font-size:11px\">Owner</span></div>":''}${['Downloads','Watch History','My Subscription','Payment Methods','App Settings','Help & Support'].map(x=>`<div class="listItem" onclick="${x==='My Subscription'?'premium()':x==='Downloads'?'go(4)':''}"><span style="font-size:20px">›</span><b>${x}</b>${x==='My Subscription'?`<span class="premiumBadge" style="margin-left:auto">${session?.profile?.is_premium?'PREMIUM':'FREE'}</span>`:''}</div>`).join('')}</div></div>`}
 function auth(){document.getElementById('app').innerHTML=`<div class="page"><button class="back" onclick="go(5)">‹</button><h1>Welcome to NollyBox</h1><p class="muted">Sign in or create your account.</p><input id="email" placeholder="Email" type="email" style="width:100%;background:#161e28;border:1px solid #27323f;border-radius:12px;color:white;padding:13px;margin:8px 0"><input id="password" placeholder="Password" type="password" style="width:100%;background:#161e28;border:1px solid #27323f;border-radius:12px;color:white;padding:13px;margin:8px 0"><div class="actions"><button class="primary" onclick="login(false)">Sign In</button><button class="secondary" onclick="login(true)">Create Account</button></div><p class="muted" style="font-size:12px">Your account will be stored securely by NollyBox's authentication service.</p></div>`}
-async function login(signup){try{const email=document.getElementById('email').value.trim(),password=document.getElementById('password').value;if(signup){await sb('/auth/v1/signup',{method:'POST',body:JSON.stringify({email,password})});toast('Account created. Check your email if confirmation is required.')}else{const r=await sb('/auth/v1/token?grant_type=password',{method:'POST',body:JSON.stringify({email,password})});session=r;localStorage.setItem('nollySession',JSON.stringify(r));await ensureProfile();await loadProfile();await checkAdmin();toast('Signed in');go(5)}}catch(e){toast('Could not complete that request')}}
+async function login(signup){
+  const email=document.getElementById('email')?.value.trim();
+  const password=document.getElementById('password')?.value||'';
+  if(!email||!password){toast('Enter your email and password');return}
+  const btn=[...document.querySelectorAll('.actions button')].find(b=>b.textContent.includes(signup?'Create Account':'Sign In'));
+  if(btn){btn.disabled=true;btn.textContent=signup?'Creating…':'Signing in…'}
+  try{
+    if(signup){
+      await sb('/auth/v1/signup',{method:'POST',body:JSON.stringify({email,password})});
+      toast('Account created. Check your email if confirmation is required.');
+    }else{
+      let r;
+      try{
+        r=await sb('/auth/v1/token?grant_type=password',{method:'POST',body:JSON.stringify({email,password})});
+      }catch(firstError){
+        const msg=String(firstError?.message||'');
+        if(msg.includes('401')||msg.includes('PGRST303')||msg.toLowerCase().includes('jwt expired')) throw firstError;
+        throw firstError;
+      }
+      session=r;
+      localStorage.setItem('nollySession',JSON.stringify(r));
+      await ensureProfile();
+      await loadProfile();
+      await checkAdmin();
+      toast('Signed in');
+      go(5);
+    }
+  }catch(e){
+    const raw=String(e?.message||e||'');
+    let msg='Could not complete that request';
+    try{
+      const parsed=JSON.parse(raw);
+      const detail=parsed?.msg||parsed?.message||parsed?.error_description||parsed?.error;
+      if(detail) msg=String(detail);
+    }catch(_){}
+    const lower=msg.toLowerCase();
+    if(lower.includes('invalid login credentials')) msg='Incorrect email or password.';
+    else if(lower.includes('email not confirmed')) msg='Please confirm your email before signing in.';
+    else if(lower.includes('email rate limit')) msg='Too many attempts. Please wait a moment and try again.';
+    else if(lower.includes('user already registered')) msg='This email already has an account. Tap Sign In instead.';
+    else if(lower.includes('network')||lower.includes('failed to fetch')) msg='Connection problem. Check your internet and try again.';
+    toast(msg);
+    console.error('NollyBox authentication error:',e);
+  }finally{
+    if(btn){btn.disabled=false;btn.textContent=signup?'Create Account':'Sign In'}
+  }
+}
 async function ensureProfile(){if(!session?.user?.id)return;try{await sb('/rest/v1/profiles',{method:'POST',headers:{Prefer:'resolution=ignore-duplicates'},body:JSON.stringify({id:session.user.id,display_name:session.user.email})})}catch(e){console.warn(e)}}
 async function logout(){try{await sb('/auth/v1/logout',{method:'POST'})}catch(e){}session=null;localStorage.removeItem('nollySession');toast('Logged out');go(1)}
 
