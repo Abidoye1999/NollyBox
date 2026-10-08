@@ -1,3 +1,14 @@
 {
-  "name":"NollyBox","short_name":"NollyBox","start_url":"./","display":"standalone","background_color":"#070b10","theme_color":"#ff3038","description":"Nigerian movies, secure playback and offline viewing.","scope":"./","orientation":"portrait"
+  "name":"NollyBox",
+  "short_name":"NollyBox",
+  "start_url":"./",
+  "display":"standalone",
+  "background_color":"#070b10",
+  "theme_color":"#ff3038",
+  "description":"Nigerian movies, secure playback and offline viewing.",
+  "scope":"./",
+  "orientation":"portrait",
+  "icons":[
+    {"src":"https://placehold.co/512x512/ff3038/ffffff/png?text=N","sizes":"512x512","type":"image/png","purpose":"any maskable"}
+  ]
 }
