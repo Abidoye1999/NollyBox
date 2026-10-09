@@ -47,9 +47,9 @@ jobs:
               defaultConfig {
                   applicationId 'com.nollybox.app'
                   minSdk 23
-                  targetSdk 28
-                  versionCode 1
-                  versionName '1.0'
+                  targetSdk 35
+                  versionCode 2
+                  versionName '1.1'
               }
           }
           EOF
@@ -75,9 +75,6 @@ jobs:
           import android.webkit.WebView;
           import android.webkit.WebViewClient;
           import android.webkit.CookieManager;
-          import android.view.View;
-          import android.view.Window;
-          import android.view.WindowManager;
           import android.graphics.Color;
           public class MainActivity extends Activity {
               private WebView web;
@@ -106,9 +103,16 @@ jobs:
           }
           EOF
 
+      - name: Verify Java and Gradle
+        run: |
+          java -version
+          gradle --version
+
       - name: Build test APK
         working-directory: android
-        run: gradle assembleDebug
+        env:
+          CI: 'true'
+        run: gradle --no-daemon --console=plain assembleDebug
 
       - name: Upload test APK
         uses: actions/upload-artifact@v4
