@@ -188,7 +188,7 @@ async function login(signup){
   if(btn){btn.disabled=true;btn.textContent=signup?'Creating…':'Signing in…'}
   try{
     if(signup){
-      await sb('/auth/v1/signup',{method:'POST',body:JSON.stringify({email,password,options:{emailRedirectTo:'https://abidoye1999.github.io/NollyBox/'}})});
+      await sb('/auth/v1/signup?redirect_to='+encodeURIComponent('https://abidoye1999.github.io/NollyBox/'),{method:'POST',body:JSON.stringify({email,password})});
       toast('Account created. Check your email if confirmation is required.');
     }else{
       let r;
