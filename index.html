@@ -320,5 +320,5 @@ function toggleList(id){if(watchlist.includes(id))watchlist=watchlist.filter(x=>
 function toast(t){let e=document.createElement('div');e.className='toast';e.textContent=t;document.body.appendChild(e);setTimeout(()=>e.remove(),1800)}
 (async()=>{await checkAdmin();await loadRemoteMovies();await loadWatchHistory();go(1)})()
 
-if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('./service-worker.js').catch(()=>{}))}
+if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('./service-worker.js',{updateViaCache:'none'}).then(reg=>reg.update()).catch(()=>{}))}
 </script></body></html>
