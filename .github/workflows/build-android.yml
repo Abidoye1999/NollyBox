@@ -13,28 +13,106 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Set up Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
+
       - name: Set up Java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
-      - name: Install Bubblewrap
-        run: npm install -g @bubblewrap/cli@1.25.0
-      - name: Initialize Android project
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.7'
+
+      - name: Create Android WebView project
         run: |
-          mkdir -p android
-          pw=$(openssl rand -hex 16)
-          printf '%s\n' 'abidoye1999.github.io' '/' 'NollyBox' 'NollyBox' 'NG' "$pw" "$pw" '#ff3038' '#070b10' 'https://placehold.co/512x512/ff3038/ffffff/png?text=N' '' '' '' '' '' '' '' '' | bubblewrap init --manifest=https://abidoye1999.github.io/NollyBox/manifest.json --directory=android
-      - name: Build debug APK
+          mkdir -p android/app/src/main/java/com/nollybox/app
+          cat > android/settings.gradle <<'EOF'
+          pluginManagement { repositories { google(); mavenCentral(); gradlePluginPortal() } }
+          dependencyResolutionManagement { repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS); repositories { google(); mavenCentral() } }
+          rootProject.name = "NollyBox"
+          include(":app")
+          EOF
+          cat > android/build.gradle <<'EOF'
+          plugins {
+              id 'com.android.application' version '8.5.2' apply false
+          }
+          EOF
+          cat > android/app/build.gradle <<'EOF'
+          plugins { id 'com.android.application' }
+          android {
+              namespace 'com.nollybox.app'
+              compileSdk 35
+              defaultConfig {
+                  applicationId 'com.nollybox.app'
+                  minSdk 23
+                  targetSdk 28
+                  versionCode 1
+                  versionName '1.0'
+              }
+          }
+          EOF
+          cat > android/app/src/main/AndroidManifest.xml <<'EOF'
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+              <uses-permission android:name="android.permission.INTERNET"/>
+              <application android:theme="@android:style/Theme.Material.Light.NoActionBar" android:label="NollyBox" android:usesCleartextTraffic="false" android:hardwareAccelerated="true">
+                  <activity android:name=".MainActivity" android:exported="true" android:configChanges="orientation|screenSize|keyboardHidden">
+                      <intent-filter>
+                          <action android:name="android.intent.action.MAIN"/>
+                          <category android:name="android.intent.category.LAUNCHER"/>
+                      </intent-filter>
+                  </activity>
+              </application>
+          </manifest>
+          EOF
+          cat > android/app/src/main/java/com/nollybox/app/MainActivity.java <<'EOF'
+          package com.nollybox.app;
+          import android.app.Activity;
+          import android.os.Bundle;
+          import android.webkit.WebChromeClient;
+          import android.webkit.WebSettings;
+          import android.webkit.WebView;
+          import android.webkit.WebViewClient;
+          import android.webkit.CookieManager;
+          import android.view.View;
+          import android.view.Window;
+          import android.view.WindowManager;
+          import android.graphics.Color;
+          public class MainActivity extends Activity {
+              private WebView web;
+              @Override public void onCreate(Bundle savedInstanceState) {
+                  super.onCreate(savedInstanceState);
+                  getWindow().setStatusBarColor(Color.rgb(7,11,16));
+                  getWindow().setNavigationBarColor(Color.rgb(7,11,16));
+                  web = new WebView(this);
+                  WebSettings s = web.getSettings();
+                  s.setJavaScriptEnabled(true);
+                  s.setDomStorageEnabled(true);
+                  s.setDatabaseEnabled(true);
+                  s.setMediaPlaybackRequiresUserGesture(false);
+                  s.setAllowFileAccess(true);
+                  s.setLoadsImagesAutomatically(true);
+                  CookieManager.getInstance().setAcceptCookie(true);
+                  CookieManager.getInstance().setAcceptThirdPartyCookies(web, true);
+                  web.setWebViewClient(new WebViewClient());
+                  web.setWebChromeClient(new WebChromeClient());
+                  setContentView(web);
+                  if (savedInstanceState != null) web.restoreState(savedInstanceState);
+                  else web.loadUrl("https://abidoye1999.github.io/NollyBox/");
+              }
+              @Override protected void onSaveInstanceState(Bundle outState) { super.onSaveInstanceState(outState); web.saveState(outState); }
+              @Override public void onBackPressed() { if (web != null && web.canGoBack()) web.goBack(); else super.onBackPressed(); }
+          }
+          EOF
+
+      - name: Build test APK
         working-directory: android
-        run: ./gradlew assembleDebug
+        run: gradle assembleDebug
+
       - name: Upload test APK
         uses: actions/upload-artifact@v4
         with:
           name: NollyBox-Android-Test
-          path: android/app/build/outputs/apk/debug/*.apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
