@@ -249,9 +249,10 @@ async function checkAdmin(){
 async function uploadMedia(bucket,inputId){if(!admin)return null;const input=document.getElementById(inputId);if(!input?.files?.[0]){toast('Choose a file first');return null}const file=input.files[0];const ext=(file.name.split('.').pop()||'bin').toLowerCase();const safe=(file.name.replace(/[^a-zA-Z0-9._-]/g,'-').replace(/\.+/g,'.'));const path=Date.now()+'-'+Math.random().toString(36).slice(2,8)+'-'+safe;try{const h={'apikey':SUPABASE_KEY,'Content-Type':file.type||'application/octet-stream','x-upsert':'false'};if(session?.access_token)h.Authorization='Bearer '+session.access_token;const r=await fetch(SUPABASE_URL+'/storage/v1/object/'+bucket+'/'+path,{method:'POST',headers:h,body:file});if(!r.ok)throw new Error(await r.text());const url=bucket==='movie-videos' ? 'storage://movie-videos/'+path : SUPABASE_URL+'/storage/v1/object/public/'+bucket+'/'+path;if(bucket==='movie-videos'){toast('Movie uploaded to private storage. Save the movie to enable secure playback.')}else{toast('Media uploaded')}return url}catch(e){toast('Upload failed: '+e.message);return null}}
 async function uploadInto(fieldId,bucket,inputId){const url=await uploadMedia(bucket,inputId);if(url){const el=document.getElementById(fieldId);if(el)el.value=url}}
 async function adminStudio(editId=null){
- // Always refresh the cached Supabase access token before opening Admin Studio.
+ // Refresh the session and re-check admin membership before loading the studio.
  if(session?.refresh_token) await refreshSession();
- if(!admin){toast('Admin access required');return}
+ await checkAdmin();
+ if(!admin){toast('Admin access required. Please sign in with the owner account.');return}
  let rows=[];
  try{rows=await sb('/rest/v1/movies?select=id,title,slug,synopsis,poster_url,backdrop_url,trailer_url,video_url,year,duration_minutes,genre,language,rating,is_premium,is_demo,is_published,cast_names,director,age_rating&order=created_at.desc')}catch(e){
    const msg=String(e.message||'');
@@ -325,7 +326,7 @@ async function verifyPayment(){
   }catch(e){toast(e.message||'Could not verify payment')}
 }
 
-async function go(n){current=Number(n)||1;try{if(current===5){checkAdmin().then(()=>{if(current===5)nav()}).catch(()=>{});loadWatchHistory().catch(()=>{})}let html=current===1?home():current===2?search():current===3?moviesPage():current===4?downloadsPage():me();document.getElementById('app').innerHTML=html;nav();window.scrollTo(0,0)}catch(e){console.error('NollyBox navigation error:',e);document.getElementById('app').innerHTML='<div class="page"><h1>Me</h1><p class="muted">We could not load this page. Please try again.</p><button class="primary" onclick="go(5)">Try Again</button></div>';nav()}}
+async function go(n){current=Number(n)||1;try{if(current===5){checkAdmin().then(()=>{if(current===5){document.getElementById('app').innerHTML=me();nav()}}).catch(()=>{});loadWatchHistory().catch(()=>{})}let html=current===1?home():current===2?search():current===3?moviesPage():current===4?downloadsPage():me();document.getElementById('app').innerHTML=html;nav();window.scrollTo(0,0)}catch(e){console.error('NollyBox navigation error:',e);document.getElementById('app').innerHTML='<div class="page"><h1>Me</h1><p class="muted">We could not load this page. Please try again.</p><button class="primary" onclick="go(5)">Try Again</button></div>';nav()}}
 function toggleList(id){if(watchlist.includes(id))watchlist=watchlist.filter(x=>x!==id);else watchlist.push(id);localStorage.setItem('nollyWatch',JSON.stringify(watchlist));toast(watchlist.includes(id)?'Added to My List':'Removed from My List')}
 
 function toast(t){let e=document.createElement('div');e.className='toast';e.textContent=t;document.body.appendChild(e);setTimeout(()=>e.remove(),1800)}
