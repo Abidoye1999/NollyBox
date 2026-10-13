@@ -27,7 +27,31 @@ jobs:
 
       - name: Create Android WebView project
         run: |
-          mkdir -p android/app/src/main/java/com/nollybox/app
+          mkdir -p android/app/src/main/java/com/nollybox/app android/app/src/main/res/drawable android/app/src/main/res/mipmap-anydpi-v26
+          cat > android/app/src/main/res/drawable/nollybox_icon_foreground.xml <<'EOF'
+          <vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">
+              <path android:fillColor="#FF3038" android:pathData="M18,28 L90,28 L90,80 L18,80 Z"/>
+              <path android:fillColor="#070B10" android:pathData="M18,28 L30,14 L44,14 L32,28 Z M46,28 L58,14 L72,14 L60,28 Z M74,28 L86,14 L96,14 L90,28 Z"/>
+              <path android:fillColor="#FFFFFF" android:pathData="M43,40 L43,68 L68,54 Z"/>
+          </vector>
+          EOF
+          cat > android/app/src/main/res/drawable/nollybox_icon_background.xml <<'EOF'
+          <vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">
+              <path android:fillColor="#070B10" android:pathData="M0,0h108v108h-108z"/>
+          </vector>
+          EOF
+          cat > android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml <<'EOF'
+          <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+              <background android:drawable="@drawable/nollybox_icon_background"/>
+              <foreground android:drawable="@drawable/nollybox_icon_foreground"/>
+          </adaptive-icon>
+          EOF
+          cat > android/app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml <<'EOF'
+          <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+              <background android:drawable="@drawable/nollybox_icon_background"/>
+              <foreground android:drawable="@drawable/nollybox_icon_foreground"/>
+          </adaptive-icon>
+          EOF
           cat > android/settings.gradle <<'EOF'
           pluginManagement { repositories { google(); mavenCentral(); gradlePluginPortal() } }
           dependencyResolutionManagement { repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS); repositories { google(); mavenCentral() } }
@@ -51,12 +75,31 @@ jobs:
                   versionCode 2
                   versionName '1.1'
               }
+              signingConfigs {
+                  release {
+                      def ks = System.getenv('ANDROID_KEYSTORE_PATH')
+                      if (ks) {
+                          storeFile file(ks)
+                          storePassword System.getenv('ANDROID_KEYSTORE_PASSWORD')
+                          keyAlias System.getenv('ANDROID_KEY_ALIAS')
+                          keyPassword System.getenv('ANDROID_KEY_PASSWORD')
+                      }
+                  }
+              }
+              buildTypes {
+                  release {
+                      minifyEnabled false
+                      if (System.getenv('ANDROID_KEYSTORE_PATH')) {
+                          signingConfig signingConfigs.release
+                      }
+                  }
+              }
           }
           EOF
           cat > android/app/src/main/AndroidManifest.xml <<'EOF'
           <manifest xmlns:android="http://schemas.android.com/apk/res/android">
               <uses-permission android:name="android.permission.INTERNET"/>
-              <application android:theme="@android:style/Theme.Material.Light.NoActionBar" android:label="NollyBox" android:usesCleartextTraffic="false" android:hardwareAccelerated="true">
+              <application android:theme="@android:style/Theme.Material.Light.NoActionBar" android:label="NollyBox" android:icon="@mipmap/ic_launcher" android:roundIcon="@mipmap/ic_launcher_round" android:usesCleartextTraffic="false" android:hardwareAccelerated="true">
                   <activity android:name=".MainActivity" android:exported="true" android:configChanges="orientation|screenSize|keyboardHidden">
                       <intent-filter>
                           <action android:name="android.intent.action.MAIN"/>
@@ -150,4 +193,47 @@ jobs:
         with:
           name: NollyBox-Android-Test
           path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+
+      - name: Check whether release signing is configured
+        id: signing
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          if [ -n "$ANDROID_KEYSTORE_BASE64" ] && [ -n "$ANDROID_KEYSTORE_PASSWORD" ] && [ -n "$ANDROID_KEY_ALIAS" ] && [ -n "$ANDROID_KEY_PASSWORD" ]; then
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "Release signing secrets are not all configured; skipping production release build."
+          fi
+
+      - name: Prepare release signing key
+        if: steps.signing.outputs.configured == 'true'
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/nollybox-release.jks"
+          echo "ANDROID_KEYSTORE_PATH=$RUNNER_TEMP/nollybox-release.jks" >> "$GITHUB_ENV"
+
+      - name: Build signed release APK and AAB
+        if: steps.signing.outputs.configured == 'true'
+        working-directory: android
+        env:
+          CI: 'true'
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: gradle --no-daemon --console=plain assembleRelease bundleRelease
+
+      - name: Upload signed release files
+        if: steps.signing.outputs.configured == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: NollyBox-Android-Release
+          path: |
+            android/app/build/outputs/apk/release/app-release.apk
+            android/app/build/outputs/bundle/release/app-release.aab
           if-no-files-found: error
