@@ -1,5 +1,5 @@
-const CACHE='nollybox-shell-v4';
-const SHELL=['./','./index.html','./manifest.json'];
+const CACHE='nollybox-shell-v5';
+const SHELL=['./','./index.html','./manifest.json','./icons/nollybox-512.svg'];
 self.addEventListener('install',event=>{
  event.waitUntil(caches.open(CACHE).then(c=>c.addAll(SHELL)).then(()=>self.skipWaiting()));
 });
