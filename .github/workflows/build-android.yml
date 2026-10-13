@@ -30,14 +30,14 @@ jobs:
           mkdir -p android/app/src/main/java/com/nollybox/app android/app/src/main/res/drawable android/app/src/main/res/mipmap-anydpi-v26
           cat > android/app/src/main/res/drawable/nollybox_icon_foreground.xml <<'EOF'
           <vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">
-              <path android:fillColor="#FF3038" android:pathData="M18,28 L90,28 L90,80 L18,80 Z"/>
-              <path android:fillColor="#070B10" android:pathData="M18,28 L30,14 L44,14 L32,28 Z M46,28 L58,14 L72,14 L60,28 Z M74,28 L86,14 L96,14 L90,28 Z"/>
-              <path android:fillColor="#FFFFFF" android:pathData="M43,40 L43,68 L68,54 Z"/>
+              <path android:fillColor="#FF3038" android:pathData="M18,18 Q18,10 26,10 L82,10 Q90,10 90,18 L90,90 L18,90 Z"/>
+              <path android:fillColor="#FFFFFF" android:pathData="M34,28 L43,28 L43,68 L34,68 Z M43,28 L67,68 L76,68 L52,28 Z"/>
+              <path android:fillColor="#FFFFFF" android:pathData="M55,39 L55,57 L72,48 Z"/>
           </vector>
           EOF
           cat > android/app/src/main/res/drawable/nollybox_icon_background.xml <<'EOF'
           <vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">
-              <path android:fillColor="#070B10" android:pathData="M0,0h108v108h-108z"/>
+              <path android:fillColor="#090B12" android:pathData="M0,0h108v108h-108z"/>
           </vector>
           EOF
           cat > android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml <<'EOF'
@@ -122,8 +122,10 @@ jobs:
           import android.net.Uri;
           import android.content.Intent;
           import android.graphics.Color;
+          import android.widget.Toast;
           public class MainActivity extends Activity {
               private WebView web;
+              private long lastBackPressed = 0;
               private ValueCallback<Uri[]> filePathCallback;
               private static final int FILE_CHOOSER_REQUEST = 2026;
               @Override public void onCreate(Bundle savedInstanceState) {
@@ -173,7 +175,19 @@ jobs:
                   }
               }
               @Override protected void onSaveInstanceState(Bundle outState) { super.onSaveInstanceState(outState); web.saveState(outState); }
-              @Override public void onBackPressed() { if (web != null && web.canGoBack()) web.goBack(); else super.onBackPressed(); }
+              @Override public void onBackPressed() {
+                  if (web != null && web.canGoBack()) {
+                      web.goBack();
+                      return;
+                  }
+                  long now = System.currentTimeMillis();
+                  if (now - lastBackPressed < 2000) {
+                      finish();
+                      return;
+                  }
+                  lastBackPressed = now;
+                  Toast.makeText(this, "Press back again to exit NollyBox", Toast.LENGTH_SHORT).show();
+              }
           }
           EOF
 
