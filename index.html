@@ -149,6 +149,18 @@ if(!isDemo){
 }else if(!isOffline){src=TEST_VIDEO}
 window.nollyPlayerActive=true;document.getElementById('app').innerHTML=`<div class="page"><button class="back" onclick='detail(${JSON.stringify(id)})'>‹</button><div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin:4px 0 10px"><div><div class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.08em">${isDemo?'DEMO CONTENT':'NOW PLAYING'}</div><h2 style="margin:3px 0 0">${m.t}</h2></div>${isDemo?'<span class="pill" style="background:#5a2024;color:#ff8b90">Demo</span>':''}</div><video id="video" class="realvideo" controls playsinline preload="metadata" src="${esc(src)}"></video><div class="muted" id="watchStatus">Loading…</div>${isDemo?`<div style="margin-top:12px;padding:12px;background:#151c25;border:1px solid #293541;border-radius:10px;font-size:12px"><b>Demo footage:</b> ${TEST_VIDEO_TITLE}. ${TEST_VIDEO_NOTE}</div>`:''}<p class="muted" style="font-size:12px;margin-top:12px">${isDemo?'When NollyBox has licensed rights, this placeholder will be replaced by the correct movie stream.':'Licensed NollyBox content is delivered through secure video delivery. This playback link expires automatically.'}</p><button class="primary" onclick='detail(${JSON.stringify(id)})'>Back to movie</button></div>`;nav();const v=document.getElementById('video');const st=document.getElementById('watchStatus');v.addEventListener('loadedmetadata',()=>{if(last>0 && last<v.duration-5){v.currentTime=last}st.textContent=`${fmt(v.currentTime)} / ${fmt(v.duration)}`});v.addEventListener('timeupdate',()=>{st.textContent=`${fmt(v.currentTime)} / ${fmt(v.duration)}`;if(Math.floor(v.currentTime)%5===0)saveProgress(id,v.currentTime,v.duration,false)});v.addEventListener('pause',()=>saveProgress(id,v.currentTime,v.duration,false));v.addEventListener('ended',()=>saveProgress(id,v.duration,v.duration,true))}
 function fmt(sec){if(!Number.isFinite(sec))return '0:00';sec=Math.floor(sec);return Math.floor(sec/60)+':'+String(sec%60).padStart(2,'0')}
+async function deleteDownloadedMovie(id,title){
+ if(downloadState[id]!=null){toast('Please wait for this download to finish before deleting it.');return}
+ if(!confirm('Delete the offline download for "'+title+'"? This removes the saved copy from this device.'))return;
+ try{
+   await offlineDelete(id);
+   downloads=downloads.filter(x=>String(x)!==String(id));
+   try{localStorage.setItem('nollyDown',JSON.stringify(downloads))}catch(_){}
+   delete downloadState[id];
+   toast('Offline download deleted');
+   go(4);
+ }catch(e){console.error('Offline download deletion failed',e);toast('Could not delete offline download. Please try again.')}
+}
 function downloadsPage(){
   const saved=downloads.map(id=>get(id)).filter(Boolean);
   const active=saved.filter(m=>downloadState[m.id]!=null);
@@ -159,7 +171,7 @@ function downloadsPage(){
       <b style="display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(m.t)}</b>
       ${downloadState[m.id]!=null?`<div class="sub">Downloading… ${downloadState[m.id]}%</div><div class="downloadBar"><i style="width:${downloadState[m.id]}%"></i></div>`:`<div class="sub">🔒 Protected offline • Ready to watch</div>`}
     </div>
-    ${downloadState[m.id]==null?`<button class="secondary offlinePlay" type="button" data-offline-id="${esc(m.id)}" onclick="window.openOfflineByButton(this)" aria-label="Play offline">${'▶'}</button>`:''}
+    ${downloadState[m.id]==null?`<button class="secondary offlinePlay" type="button" data-offline-id="${esc(m.id)}" onclick="window.openOfflineByButton(this)" aria-label="Play offline">${'▶'}</button><button class="secondary" type="button" style="margin-left:8px;color:#ff626b;border-color:#64323a" onclick='deleteDownloadedMovie(${JSON.stringify(m.id)},${JSON.stringify(m.t).replace(/'/g,"&#39;")})' aria-label="Delete offline download" title="Delete download">🗑</button>`:''}
   </div>`;
   return `<div class="page">
     <h1>Downloads</h1>
