@@ -175,9 +175,10 @@ jobs:
                   }
               }
               @Override protected void onSaveInstanceState(Bundle outState) { super.onSaveInstanceState(outState); web.saveState(outState); }
-              @Override public void onBackPressed() {
+              private void handleExitBack() {
                   if (web != null && web.canGoBack()) {
                       web.goBack();
+                      lastBackPressed = 0;
                       return;
                   }
                   long now = System.currentTimeMillis();
@@ -187,6 +188,21 @@ jobs:
                   }
                   lastBackPressed = now;
                   Toast.makeText(this, "Press back again to exit NollyBox", Toast.LENGTH_SHORT).show();
+              }
+              @Override public void onBackPressed() {
+                  if (web == null) { handleExitBack(); return; }
+                  // Let the web app close an active movie/trailer first. Only
+                  // use the double-back exit prompt when no player is open.
+                  web.evaluateJavascript(
+                      "(function(){return window.nollyHandleAndroidBack ? window.nollyHandleAndroidBack() : 'exit'})()",
+                      value -> {
+                          if ("\"handled\"".equals(value)) {
+                              lastBackPressed = 0;
+                          } else {
+                              handleExitBack();
+                          }
+                      }
+                  );
               }
           }
           EOF
