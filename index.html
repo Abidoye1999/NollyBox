@@ -405,7 +405,7 @@ function toggleList(id){if(watchlist.includes(id))watchlist=watchlist.filter(x=>
 window.nollyPlayerActive=false;
 window.nollyHandleAndroidBack=function(){if(window.nollyPlayerActive){try{document.querySelectorAll('video').forEach(v=>{try{v.pause()}catch(_){}});if(window._offlineCleanup){window._offlineCleanup();window._offlineCleanup=null}}catch(_){}window.nollyPlayerActive=false;go(1);return 'handled'}return 'exit'};
 function toast(t){let e=document.createElement('div');e.className='toast';e.textContent=t;document.body.appendChild(e);setTimeout(()=>e.remove(),1800)}
-(async()=>{await checkAdmin();await loadRemoteMovies();await loadWatchHistory();go(1)})()
+(async()=>{go(1);checkAdmin().catch(e=>console.error('NollyBox admin initialization:',e));loadWatchHistory().catch(e=>console.error('NollyBox history initialization:',e));loadRemoteMovies().then(()=>{if(current===1)go(1)}).catch(e=>console.error('NollyBox catalogue initialization:',e))})()
 
 if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('./service-worker.js',{updateViaCache:'none'}).then(reg=>reg.update()).catch(()=>{}))}
 </script></body></html>
