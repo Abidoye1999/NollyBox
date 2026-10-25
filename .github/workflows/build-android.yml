@@ -139,7 +139,15 @@ jobs:
                   s.setDatabaseEnabled(true);
                   s.setMediaPlaybackRequiresUserGesture(false);
                   s.setAllowFileAccess(true);
+                  // Explicitly allow remote poster/backdrop/avatar images in the WebView.
+                  // Some Android WebView builds can inherit blocked-image/network settings.
                   s.setLoadsImagesAutomatically(true);
+                  s.setBlockNetworkImage(false);
+                  s.setBlockNetworkLoads(false);
+                  s.setCacheMode(WebSettings.LOAD_DEFAULT);
+                  if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
+                      s.setMixedContentMode(WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE);
+                  }
                   CookieManager.getInstance().setAcceptCookie(true);
                   CookieManager.getInstance().setAcceptThirdPartyCookies(web, true);
                   web.setWebViewClient(new WebViewClient() {
