@@ -9,7 +9,7 @@ jobs:
   build-android:
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -305,3 +305,16 @@ jobs:
             android/app/build/outputs/apk/release/app-release.apk
             android/app/build/outputs/bundle/release/app-release.aab
           if-no-files-found: error
+
+
+      - name: Publish APK to GitHub Releases
+        if: steps.signing.outputs.configured == 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: android-latest
+          name: NollyBox Android (Latest)
+          body: "Latest NollyBox Android APK build. Download app-release.apk below."
+          prerelease: true
+          make_latest: false
+          files: android/app/build/outputs/apk/release/app-release.apk
+          overwrite_files: true
