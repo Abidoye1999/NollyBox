@@ -42,7 +42,7 @@ body{background:var(--nb-bg);color:var(--nb-text);font-family:Inter,-apple-syste
 .nav button.active{color:#df6b71;background:rgba(201,74,82,.075)}
 .nav button{transition:color .15s ease,background .15s ease}
 .downloadItem{gap:12px;padding:12px;border:1px solid #26313d;background:#111720;border-radius:14px;align-items:center}
-.downloadThumb{width:66px;height:88px;border-radius:9px;background-size:cover;background-position:center;flex:none;box-shadow:0 4px 12px rgba(0,0,0,.2)}
+.downloadThumb img{width:100%;height:100%;object-fit:cover;display:block}.downloadThumb{width:66px;height:88px;border-radius:9px;background-size:cover;background-position:center;flex:none;box-shadow:0 4px 12px rgba(0,0,0,.2)}
 .downloadMeta{flex:1;min-width:0}
 .downloadTitle{display:block;font-size:14px;font-weight:700;line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .downloadState{font-size:11px;color:#9ca6b3;margin-top:5px}
@@ -69,8 +69,9 @@ let session=JSON.parse(localStorage.getItem('nollySession')||'null');
 async function sb(path,options={}){const {public:publicRequest=false,...fetchOptions}=options;const headers={'apikey':SUPABASE_KEY,'Content-Type':'application/json',...(fetchOptions.headers||{})};if(!publicRequest&&session?.access_token)headers.Authorization='Bearer '+session.access_token;const r=await fetch(SUPABASE_URL+path,{...fetchOptions,headers});if(!r.ok)throw new Error(await r.text());return r.status===204?null:r.json()}
 async function loadRemoteMovies(){try{const rows=await sb('/rest/v1/movies?select=id,title,slug,synopsis,poster_url,backdrop_url,trailer_url,video_url,year,duration_minutes,genre,language,rating,is_premium,is_demo,cast_names,director,age_rating&is_published=eq.true&order=created_at.desc');
 const remoteRows=rows.map(m=>({id:m.id,t:m.title,g:(m.genre||['Drama'])[0],genres:m.genre||[],r:String(m.rating||0),img:m.poster_url||'https://placehold.co/600x900/png?text=NollyBox',backdrop:m.backdrop_url||m.poster_url||'',synopsis:m.synopsis||'',year:m.year||2025,duration:m.duration_minutes||0,cast:m.cast_names||[],director:m.director||'',age:m.age_rating||'13+',slug:m.slug,remote:true,trailer:m.trailer_url||'',video:m.video_url||'',demo:Boolean(m.is_demo)}));
+async function cacheDownloadedPosters(){if(!navigator.onLine)return;try{const cached=JSON.parse(localStorage.getItem('nollyOfflinePosters')||'{}');for(const id of downloads){if(cached[String(id)])continue;const m=movies.find(x=>String(x.id)===String(id));if(m)await cacheOfflinePoster(m)}}catch(e){console.warn('Downloaded poster repair skipped',e)}}
 const remoteSlugs=new Set(remoteRows.map(m=>m.slug));const localDemos=movies.filter(m=>!m.remote&&!remoteSlugs.has(m.slug));movies.length=0;movies.push(...remoteRows,...localDemos);
-try{localStorage.setItem('nollyCatalogueCache',JSON.stringify(remoteRows))}catch(cacheError){console.warn('Catalogue cache could not be saved',cacheError)}go(current);return true
+try{localStorage.setItem('nollyCatalogueCache',JSON.stringify(remoteRows))}catch(cacheError){console.warn('Catalogue cache could not be saved',cacheError)}cacheDownloadedPosters();go(current);return true
 }catch(e){console.warn('NollyBox backend unavailable',e);try{const cached=JSON.parse(localStorage.getItem('nollyCatalogueCache')||'[]');if(Array.isArray(cached)&&cached.length){const remoteSlugs=new Set(cached.map(m=>m.slug));const localDemos=movies.filter(m=>!m.remote&&!remoteSlugs.has(m.slug));movies.length=0;movies.push(...cached,...localDemos);go(current);return true}}catch(cacheError){console.warn('Cached catalogue unavailable',cacheError)}return false}}
 const movies=[
  {id:1,slug:'tribe-called-judah',t:'A Tribe Called Judah',g:'Comedy',r:'8.2',img:'https://images.unsplash.com/photo-1485846234645-a62644f84728?auto=format&fit=crop&w=500&q=80',demo:true},
@@ -210,7 +211,7 @@ function downloadsPage(){
   const active=saved.filter(m=>downloadState[m.id]!=null);
   const ready=saved.filter(m=>downloadState[m.id]==null);
   const card=m=>`<div class="listItem downloadItem">
-    <div class="downloadThumb" style="background-image:url('${esc((()=>{try{return JSON.parse(localStorage.getItem('nollyOfflinePosters')||'{}')[String(m.id)]||m.img}catch(_){return m.img}})())}')"></div>
+    <div class="downloadThumb"><img src="${esc((()=>{try{return JSON.parse(localStorage.getItem('nollyOfflinePosters')||'{}')[String(m.id)]||m.img}catch(_){return m.img}})())}" alt="" onerror="this.style.display='none';this.parentElement.textContent='🎬'"></div>
     <div class="downloadMeta">
       <b class="downloadTitle">${esc(m.t)}</b>
       ${downloadState[m.id]!=null?`<div class="downloadState">Downloading · ${downloadState[m.id]}%</div><div class="downloadBar"><i style="width:${downloadState[m.id]}%"></i></div>`:`<div class="downloadState">Protected offline copy · Ready to watch</div>`}
