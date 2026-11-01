@@ -249,11 +249,6 @@ jobs:
                   }
               }
               @Override
-              public void onBackPressed() {
-                  if (customView != null) { hideCustomVideoView(); return; }
-                  super.onBackPressed();
-              }
-              @Override
               protected void onActivityResult(int requestCode, int resultCode, Intent data) {
                   super.onActivityResult(requestCode, resultCode, data);
                   if (requestCode == FILE_CHOOSER_REQUEST) {
@@ -280,6 +275,7 @@ jobs:
                   Toast.makeText(this, "Press back again to exit NollyBox", Toast.LENGTH_SHORT).show();
               }
               @Override public void onBackPressed() {
+                  if (customView != null) { hideCustomVideoView(); return; }
                   if (web == null) { handleExitBack(); return; }
                   // Let the web app close an active movie/trailer first. Only
                   // use the double-back exit prompt when no player is open.
