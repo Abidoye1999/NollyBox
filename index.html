@@ -162,7 +162,61 @@ function openOffline(id){
 }
 
 
-let _videoFullscreenTransition=false;let _videoOrientationLocked=false;async function lockVideoLandscape(){try{if(screen.orientation?.lock){await screen.orientation.lock('landscape');_videoOrientationLocked=true;return true}}catch(e){console.warn('Landscape orientation lock unavailable',e)}return false}async function unlockVideoOrientation(){try{if(_videoOrientationLocked&&screen.orientation?.unlock)screen.orientation.unlock()}catch(e){console.warn('Orientation unlock failed',e)}_videoOrientationLocked=false}async function toggleVideoOrientation(videoId,buttonId){const v=document.getElementById(videoId);if(!v||_videoFullscreenTransition)return;_videoFullscreenTransition=true;try{if(document.fullscreenElement||document.webkitFullscreenElement){if(document.exitFullscreen)await document.exitFullscreen();else if(document.webkitExitFullscreen)document.webkitExitFullscreen();await unlockVideoOrientation();return}let entered=false;if(v.requestFullscreen){await v.requestFullscreen();entered=true}else if(v.webkitRequestFullscreen){v.webkitRequestFullscreen();entered=true}if(entered){await lockVideoLandscape();const btn=document.getElementById(buttonId);if(btn){btn.setAttribute('aria-label','Exit landscape');btn.setAttribute('title','Exit landscape')}}else toast('Full screen is unavailable on this device')}catch(e){console.warn('Video fullscreen request failed',e);await unlockVideoOrientation();toast('Could not change video orientation. Try the player full-screen control.')}finally{setTimeout(()=>{_videoFullscreenTransition=false},900)}}\ndocument.addEventListener('fullscreenchange',()=>{if(!document.fullscreenElement&&!document.webkitFullscreenElement)unlockVideoOrientation()});document.addEventListener('webkitfullscreenchange',()=>{if(!document.fullscreenElement&&!document.webkitFullscreenElement)unlockVideoOrientation()});
+let _videoFullscreenTransition=false;let _videoOrientationLocked=false;
+async function lockVideoLandscape(){
+  try{
+    const o=screen.orientation;
+    if(o?.lock){
+      try{await o.lock('landscape-primary');_videoOrientationLocked=true;return true}catch(e1){
+        try{await o.lock('landscape');_videoOrientationLocked=true;return true}catch(e2){}
+      }
+    }
+  }catch(e){}
+  console.warn('Landscape orientation lock unavailable in this WebView/device');
+  return false;
+}
+async function unlockVideoOrientation(){
+  try{if(_videoOrientationLocked&&screen.orientation?.unlock)screen.orientation.unlock()}catch(e){}
+  _videoOrientationLocked=false;
+}
+function setOrientationButton(buttonId,landscape){
+  const btn=document.getElementById(buttonId);if(!btn)return;
+  btn.textContent=landscape?'↙':'▣↻';
+  btn.setAttribute('aria-label',landscape?'Exit fullscreen':'Rotate video to landscape');
+  btn.setAttribute('title',landscape?'Exit fullscreen':'Rotate video to landscape');
+}
+async function enterVideoFullscreen(v,buttonId){
+  let entered=false;
+  if(v.requestFullscreen){await v.requestFullscreen();entered=true}
+  else if(v.webkitRequestFullscreen){v.webkitRequestFullscreen();entered=true}
+  if(!entered)throw new Error('Fullscreen is unavailable');
+  await new Promise(r=>setTimeout(r,120));
+  const locked=await lockVideoLandscape();
+  setOrientationButton(buttonId,true);
+  if(!locked)toast('Fullscreen opened, but this APK/WebView does not expose orientation locking.');
+  return true;
+}
+async function exitVideoFullscreen(){
+  try{
+    if(document.exitFullscreen)await document.exitFullscreen();
+    else if(document.webkitExitFullscreen)document.webkitExitFullscreen();
+  }finally{await unlockVideoOrientation();}
+}
+async function toggleVideoOrientation(videoId,buttonId){
+  const v=document.getElementById(videoId);if(!v||_videoFullscreenTransition)return;
+  _videoFullscreenTransition=true;
+  try{
+    if(document.fullscreenElement||document.webkitFullscreenElement){await exitVideoFullscreen();setOrientationButton(buttonId,false);return}
+    await enterVideoFullscreen(v,buttonId);
+  }catch(e){
+    console.warn('Video fullscreen/orientation request failed',e);
+    await unlockVideoOrientation();
+    setOrientationButton(buttonId,false);
+    toast('Could not open video fullscreen on this device.');
+  }finally{setTimeout(()=>{_videoFullscreenTransition=false},500)}
+}
+document.addEventListener('fullscreenchange',async()=>{if(!document.fullscreenElement&&!document.webkitFullscreenElement){await unlockVideoOrientation();}});
+document.addEventListener('webkitfullscreenchange',async()=>{if(!document.fullscreenElement&&!document.webkitFullscreenElement){await unlockVideoOrientation();}});
 async function play(id,offlineSrc='',isOffline=false){let m=get(id),isDemo=!!m?.demo,src=offlineSrc,last=progress[id]?.seconds||0;
 if(!m){toast('Movie not found');return}
 // Prefer the saved protected copy before requesting a network stream. This makes home-page taps work in airplane mode.
