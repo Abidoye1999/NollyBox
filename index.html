@@ -163,23 +163,7 @@ function openOffline(id){
 }
 
 
-let _videoFullscreenTransition=false;let _videoOrientationLocked=false;
-async function lockVideoLandscape(){
-  try{
-    const o=screen.orientation;
-    if(o?.lock){
-      try{await o.lock('landscape-primary');_videoOrientationLocked=true;return true}catch(e1){
-        try{await o.lock('landscape');_videoOrientationLocked=true;return true}catch(e2){}
-      }
-    }
-  }catch(e){}
-  console.warn('Landscape orientation lock unavailable in this WebView/device');
-  return false;
-}
-async function unlockVideoOrientation(){
-  try{if(_videoOrientationLocked&&screen.orientation?.unlock)screen.orientation.unlock()}catch(e){}
-  _videoOrientationLocked=false;
-}
+let _videoFullscreenTransition=false;
 function setOrientationButton(buttonId,landscape){
   const btn=document.getElementById(buttonId);if(!btn)return;
   btn.textContent=landscape?'↙':'▣↻';
@@ -188,20 +172,21 @@ function setOrientationButton(buttonId,landscape){
 }
 async function enterVideoFullscreen(v,buttonId){
   let entered=false;
-  if(v.requestFullscreen){await v.requestFullscreen();entered=true}
-  else if(v.webkitRequestFullscreen){v.webkitRequestFullscreen();entered=true}
+  try{
+    if(v.requestFullscreen){await v.requestFullscreen();entered=true}
+    else if(v.webkitRequestFullscreen){v.webkitRequestFullscreen();entered=true}
+  }catch(e){console.warn('Video fullscreen request failed',e)}
   if(!entered)throw new Error('Fullscreen is unavailable');
-  await new Promise(r=>setTimeout(r,120));
-  const locked=await lockVideoLandscape();
   setOrientationButton(buttonId,true);
-  if(!locked)toast('Fullscreen opened, but this APK/WebView does not expose orientation locking.');
   return true;
 }
 async function exitVideoFullscreen(){
-  try{
-    if(document.exitFullscreen)await document.exitFullscreen();
-    else if(document.webkitExitFullscreen)document.webkitExitFullscreen();
-  }finally{await unlockVideoOrientation();}
+  if(document.fullscreenElement||document.webkitFullscreenElement){
+    try{
+      if(document.exitFullscreen)await document.exitFullscreen();
+      else if(document.webkitExitFullscreen)document.webkitExitFullscreen();
+    }catch(e){console.warn('Video fullscreen exit failed',e)}
+  }
 }
 async function toggleVideoOrientation(videoId,buttonId){
   const v=document.getElementById(videoId);if(!v||_videoFullscreenTransition)return;
@@ -210,14 +195,23 @@ async function toggleVideoOrientation(videoId,buttonId){
     if(document.fullscreenElement||document.webkitFullscreenElement){await exitVideoFullscreen();setOrientationButton(buttonId,false);return}
     await enterVideoFullscreen(v,buttonId);
   }catch(e){
-    console.warn('Video fullscreen/orientation request failed',e);
-    await unlockVideoOrientation();
+    console.warn('Video fullscreen request failed',e);
     setOrientationButton(buttonId,false);
     toast('Could not open video fullscreen on this device.');
   }finally{setTimeout(()=>{_videoFullscreenTransition=false},500)}
 }
-document.addEventListener('fullscreenchange',async()=>{if(!document.fullscreenElement&&!document.webkitFullscreenElement){await unlockVideoOrientation();}});
-document.addEventListener('webkitfullscreenchange',async()=>{if(!document.fullscreenElement&&!document.webkitFullscreenElement){await unlockVideoOrientation();}});
+document.addEventListener('fullscreenchange',()=>{
+  if(!document.fullscreenElement&&!document.webkitFullscreenElement){
+    setOrientationButton('videoOrientationBtn',false);
+    setOrientationButton('offlineOrientationBtn',false);
+  }
+});
+document.addEventListener('webkitfullscreenchange',()=>{
+  if(!document.fullscreenElement&&!document.webkitFullscreenElement){
+    setOrientationButton('videoOrientationBtn',false);
+    setOrientationButton('offlineOrientationBtn',false);
+  }
+});
 async function play(id,offlineSrc='',isOffline=false){let m=get(id),isDemo=!!m?.demo,src=offlineSrc,last=progress[id]?.seconds||0;
 if(!m){toast('Movie not found');return}
 // Prefer the saved protected copy before requesting a network stream. This makes home-page taps work in airplane mode.
