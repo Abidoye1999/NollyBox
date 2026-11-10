@@ -1,4 +1,5 @@
 name: Build NollyBox Android APK
+# Triggered from main to produce the current APK
 
 on:
   push:
