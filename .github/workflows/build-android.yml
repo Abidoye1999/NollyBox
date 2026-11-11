@@ -74,8 +74,8 @@ jobs:
                   applicationId 'com.nollybox.app'
                   minSdk 23
                   targetSdk 35
-                  versionCode 3
-                  versionName '1.2'
+                  versionCode 4
+                  versionName '1.3'
               }
               signingConfigs {
                   release {
@@ -244,7 +244,9 @@ jobs:
                   web.setVisibility(View.VISIBLE);
                   getWindow().clearFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
                   getWindow().getDecorView().setSystemUiVisibility(previousSystemUiVisibility);
-                  setRequestedOrientation(previousOrientation);
+                  // NollyBox browsing is portrait. Do not restore UNSPECIFIED here:
+                  // that lets the device sensor immediately rotate the activity again.
+                  setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
                   if (customViewCallback != null) {
                       customViewCallback.onCustomViewHidden();
                       customViewCallback = null;
@@ -259,6 +261,18 @@ jobs:
                           filePathCallback.onReceiveValue(results);
                           filePathCallback = null;
                       }
+                  }
+              }
+              @Override
+              public void onConfigurationChanged(android.content.res.Configuration newConfig) {
+                  super.onConfigurationChanged(newConfig);
+                  // Android/WebView can briefly re-evaluate fullscreen during the
+                  // configuration transition. Keep the native video surface locked
+                  // to landscape until fullscreen is actually dismissed.
+                  if (customView != null) {
+                      setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
+                  } else {
+                      setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
                   }
               }
               @Override protected void onSaveInstanceState(Bundle outState) { super.onSaveInstanceState(outState); web.saveState(outState); }
