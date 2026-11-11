@@ -166,7 +166,7 @@ function openOffline(id){
 let _videoFullscreenTransition=false;
 function setOrientationButton(buttonId,landscape){
   const btn=document.getElementById(buttonId);if(!btn)return;
-  btn.textContent=landscape?'↙':'▣↻';
+  btn.textContent=landscape?'↙':'⛶';
   btn.setAttribute('aria-label',landscape?'Exit fullscreen':'Rotate video to landscape');
   btn.setAttribute('title',landscape?'Exit fullscreen':'Rotate video to landscape');
 }
