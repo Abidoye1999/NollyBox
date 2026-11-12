@@ -1,0 +1,14 @@
+name: NollyBox Actions Check
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  actions-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Confirm Actions is active
+        run: echo "NollyBox GitHub Actions is active"
