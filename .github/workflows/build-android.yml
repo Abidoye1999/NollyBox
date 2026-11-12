@@ -94,8 +94,7 @@ jobs:
                       if (System.getenv('ANDROID_KEYSTORE_PATH')) {
                           signingConfig signingConfigs.release
                       }
-                  }
-          }
+              }
           EOF
           cat > android/app/src/main/AndroidManifest.xml <<'EOF'
           <manifest xmlns:android="http://schemas.android.com/apk/res/android">
