@@ -1,6 +1,7 @@
 name: Build NollyBox Android APK v2
 # Triggered from main to produce the current APK
 # Force rebuild after fullscreen orientation fix
+# Release-signing verification rebuild
 
 on:
   push:
